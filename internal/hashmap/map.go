@@ -101,6 +101,11 @@ func (h *hashMap) getShardNumber(key string) uintptr {
 	return hash % h.shardCount
 }
 
+func (h *hashMap) Close(){
+	h.shards = nil
+	h.hasher = nil
+}
+
 // 使用指针操作,可以避免边界检查
 func add(p unsafe.Pointer, x uintptr) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(p) + x)
