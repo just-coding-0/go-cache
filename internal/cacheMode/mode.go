@@ -8,14 +8,19 @@ import (
 	"fmt"
 	"hash/fnv"
 	"runtime"
+	"sync"
 	"time"
 )
 
 const (
-	LRU  = iota // 0 Least Recently Used
-	LFU         // 1 least frequently used
-	FIFO        // 2 First In First Out
+	FIFO = iota // 0 First In First Out
+	LRU         // 1 Least Recently Used
 )
+
+/*
+FIFO：First In First Out，先进先出。判断被存储的时间，离目前最远的数据优先被淘汰。
+LRU：Least Recently Used，最近最少使用。判断最近被使用的时间，目前最远的数据优先被淘汰。
+*/
 
 const (
 	B  = 1
@@ -27,22 +32,26 @@ const (
 /*
 该接口会实现两个功能
 1.往里面放entry
-2.返回一个订阅的chan,该类会将需要淘汰的enter返回
+2.返回一个订阅的chan,该类会将需要淘汰的entry返回
 
 <- f
 f <-
 */
 type CacheElimination interface {
-	PushEnter() chan *Entry
-	PopEnter() chan *Entry
+	PushEntry() chan<- *Entry
+	PopEntry() <-chan *Entry
 	SetMaxMemUsed(maxMem uintptr)
 	Close()
 	Start()
+
+	GetEntry() *Entry
+	PutEntry(e *Entry)
 }
 
 type cacheElimination struct {
-	Push                 chan *Entry
-	Pop                  chan *Entry
+	push                 chan *Entry
+	pop                  chan *Entry
+	pool                 sync.Pool
 	popExitChan          chan struct{}
 	refreshStatsExitChan chan struct{}
 	heapAlloc            uint64
@@ -51,17 +60,17 @@ type cacheElimination struct {
 	debug                bool
 }
 
-func (c *cacheElimination) PushEnter() chan<- *Entry {
-	if c.Push != nil {
-		return c.Push
+func (c *cacheElimination) PushEntry() chan<- *Entry {
+	if c.push != nil {
+		return c.push
 	}
 	panic("not found push chan")
 	return nil
 }
 
-func (c *cacheElimination) PopEnter() <-chan *Entry {
-	if c.Pop != nil {
-		return c.Pop
+func (c *cacheElimination) PopEntry() <-chan *Entry {
+	if c.pop != nil {
+		return c.pop
 	}
 	panic("not found pop chan")
 	return nil
@@ -93,12 +102,21 @@ func (c *cacheElimination) refreshStats() {
 func (c *cacheElimination) Close() {
 	c.refreshStatsExitChan <- struct{}{}
 	c.popExitChan <- struct{}{}
-	close(c.Push)
-	close(c.Pop)
+	close(c.push)
+	close(c.pop)
 }
 
 func (c *cacheElimination) SetMaxMemUsed(maxMem uintptr) {
 	c.MaxMem = maxMem
+}
+
+func (c *cacheElimination) GetEntry() *Entry {
+	e := c.pool.Get().(*Entry)
+	e.reset()
+	return e
+}
+func (c *cacheElimination) PutEntry(e *Entry) {
+	c.pool.Put(e)
 }
 
 func hash(v interface{}) uint64 {

@@ -1,0 +1,41 @@
+// Copyright 2020 just-coding-0.  All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package v1;
+
+
+message put_response {
+    bool ok = 1;
+}
+
+message put_request {
+    string key = 1;
+    string value = 2;
+    int64 expiry_policy = 3;
+}
+
+message load_response {
+    string value = 1;
+    bool ok = 2;
+}
+
+message load_request {
+    string key = 1;
+}
+
+
+message remove_response {
+    bool ok = 1;
+}
+
+message remove_request {
+    string key = 1;
+}
+
+message ping_request {
+    string cipher = 1;
+    string plaintext = 2;
+}

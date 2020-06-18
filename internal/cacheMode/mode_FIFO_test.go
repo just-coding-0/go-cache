@@ -13,24 +13,35 @@ import (
 func TestModeFIFO(t *testing.T) {
 	f := NewModeFIFO()
 	f.debug = true
-	f.SetMaxMemUsed(13 * MB) // 50MB
+	f.SetMaxMemUsed(50 * MB) // 50MB
 	f.Start()
-	c := f.PushEnter()
-	c1 := f.PopEnter()
-	fmt.Println(time.Now())
+	c := f.PushEntry()
+	c1 := f.PopEntry()
 	go func() {
 		for {
-			c <- &Entry{Key: fmt.Sprintf("%d", rand.Int()), ExpiryPolicy: time.Now().Unix()}
+			c <- &Entry{key: fmt.Sprintf("%d", rand.Int()), expiryTimes: time.Now().Unix()}
+			time.Sleep(time.Microsecond * 200)
+		}
+	}()
+
+	go func() {
+		for {
+			c <- &Entry{key: fmt.Sprintf("%d", rand.Int()), expiryTimes: time.Now().Unix()}
+			time.Sleep(time.Microsecond * 200)
+		}
+	}()
+
+	go func() {
+		for {
+			c <- &Entry{key: fmt.Sprintf("%d", rand.Int()), expiryTimes: time.Now().Unix()}
 			time.Sleep(time.Microsecond * 200)
 		}
 	}()
 
 	var cnt int
-	for v := range c1 {
+	for  range c1 {
 		cnt++
-		t := time.Unix(v.ExpiryPolicy, 0)
-		fmt.Println(t)
-		if cnt == 10 {
+		if cnt == 100000 {
 			break
 		}
 	}

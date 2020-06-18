@@ -10,6 +10,16 @@ import (
 	"unsafe"
 )
 
+type HashMap interface {
+	Delete(key string) bool
+	Put(key, value string)
+	Load(key string) (string, bool)
+	GetShardSize() uintptr
+	Close()
+}
+
+var _ hashMap = hashMap{}
+
 type hashMap struct {
 	shards     []shard
 	hash0      uintptr
@@ -19,8 +29,6 @@ type hashMap struct {
 
 type shard struct {
 	syncMap sync.Map
-	//Map map[string]string
-	//lock sync.Mutex
 }
 
 const (
@@ -101,7 +109,7 @@ func (h *hashMap) getShardNumber(key string) uintptr {
 	return hash % h.shardCount
 }
 
-func (h *hashMap) Close(){
+func (h *hashMap) Close() {
 	h.shards = nil
 	h.hasher = nil
 }

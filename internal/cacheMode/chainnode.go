@@ -41,10 +41,7 @@ func (n *Node) reset() {
 	n.value = nil
 }
 
-func (c *chain) InsertFront(entry *Entry) {
-	n := c.pool.Get().(*Node)
-	n.setValue(entry)
-
+func (c *chain) InsertFront(n *Node) {
 	if c.Front == nil {
 		c.Front = n
 		c.Tail = n
@@ -56,10 +53,7 @@ func (c *chain) InsertFront(entry *Entry) {
 	c.Front = n
 }
 
-func (c *chain) InsertTail(entry *Entry) {
-	n := c.pool.Get().(*Node)
-	n.setValue(entry)
-
+func (c *chain) InsertTail(n *Node) {
 	if c.Tail == nil {
 		c.Front = n
 		c.Tail = n
@@ -145,4 +139,24 @@ func (c *chain) Pop(n *Node) *Entry {
 	c.pool.Put(n)
 
 	return value
+}
+
+func (c *chain) MoveNodeToFront(m *Node) {
+	pre := m.Pre
+	next := m.Next
+	if pre != nil {
+		pre.Next = next
+		if next != nil {
+			next.Pre = pre
+		}
+	}
+	m.Pre = nil
+	m.Next = nil
+
+	c.InsertFront(m)
+}
+
+func (c *chain) getNewNode() *Node {
+	n := c.pool.Get().(*Node)
+	return n
 }
