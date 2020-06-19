@@ -131,11 +131,13 @@ func (m *ModeFIFO) handlerSave(v *Entry) {
 }
 
 func (m *ModeFIFO) handlerPop() {
-	var t = time.NewTicker(time.Second * 1)
+	// 每隔五十毫秒会去检查一次
+	var heapTicker = time.NewTicker(time.Millisecond * 50)
+	var t1 = time.NewTicker(time.Second * 1)
 	var unix int64
 	for {
 		select {
-		case <-t.C:
+		case <-heapTicker.C:
 			unix = time.Now().Unix()
 			m.heapLock.Lock()
 			for m.heap.Len() > 0 && m.heap.items[m.heap.Len()-1].ExpiryTimes <= unix { // 最小堆,会将即将过期的key,传输出去
@@ -144,6 +146,7 @@ func (m *ModeFIFO) handlerPop() {
 				m.pop <- e
 			}
 			m.heapLock.Unlock()
+		case <-t1.C:
 
 			k := float64(m.heapAlloc) / float64(m.MaxMem)
 			if k < 0.8 {
@@ -163,7 +166,8 @@ func (m *ModeFIFO) handlerPop() {
 				m.pop <- entry
 			}
 		case <-m.popExitChan:
-			t.Stop()
+			t1.Stop()
+			heapTicker.Stop()
 			close(m.popExitChan)
 		}
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 type Manager struct {
-	hashMap          hashmap.HashMap
+	hashMap hashmap.HashMap
 	//set              Set
 	cacheElimination cacheMode.CacheElimination
 	Push             chan<- *cacheMode.Entry
@@ -62,6 +62,7 @@ func NewManager(MaxMemCap uint64, shardSize uintptr, mode uint8) CacheManager {
 
 	// 监听chan
 	go manager.WatchPopChan()
+	manager.cacheElimination.Start()
 
 	return manager
 }
